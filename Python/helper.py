@@ -1,9 +1,5 @@
 import requests
-from types import GoBuildType, JSBuildType, PythonBuildType, RustBuildType
-    
-
-
-
+from Orchestration.Python.types import GoBuildType, JSBuildType, PythonBuildType, RustBuildType
 
 def detect_build_type(repo_url: str) -> PythonBuildType:
     parsed = urlparse(repo_url)

@@ -1,5 +1,5 @@
 import yaml
-from Orchestration.create_dockerfile import create_dockerfile
+from Orchestration.Python.create_dockerfile import create_dockerfile
 from pathlib import Path
 if __name__ == "__main__":
 
@@ -15,8 +15,8 @@ if __name__ == "__main__":
     repo_laanguage = config["type"]
     
     if repo_laanguage == "python":
-        from Orchestration.base_image_extractor import get_repo_file_index, resolve_python_version
-        from Orchestration.base_image.python_image import python_version_to_image,detect_python_build_type, PythonBuildType,python_install_commands
+        from Orchestration.Python.base_image_extractor import get_repo_file_index, resolve_python_version
+        from Orchestration.Python.base_image.python_image import python_version_to_image,detect_python_build_type, PythonBuildType,python_install_commands
 
         repo_files = get_repo_file_index(repo_url)
         python_version = resolve_python_version(repo_files)
@@ -26,8 +26,8 @@ if __name__ == "__main__":
 
         create_dockerfile(base_image, repo_name, repo_url,install_steps)
     elif repo_laanguage == "go":
-        from Orchestration.base_image_extractor import get_repo_file_index
-        from Orchestration.base_image.go_image import (
+        from Orchestration.Python.base_image_extractor import get_repo_file_index
+        from Orchestration.Python.base_image.go_image import (
             resolve_go_version,
             go_version_to_image,
             detect_go_build_type,
@@ -50,8 +50,8 @@ if __name__ == "__main__":
         )
 
     elif repo_laanguage == "rust":
-        from Orchestration.base_image_extractor import get_repo_file_index
-        from Orchestration.base_image.rust_image import (
+        from Orchestration.Python.base_image_extractor import get_repo_file_index
+        from Orchestration.Python.base_image.rust_image import (
             resolve_rust_version,
             rust_version_to_image,
             detect_rust_build_type,
@@ -78,8 +78,8 @@ if __name__ == "__main__":
         )
 
     elif repo_laanguage == "javascript":
-        from Orchestration.base_image_extractor import get_repo_file_index
-        from Orchestration.base_image.node_version import resolve_node_version, node_version_to_image,js_install_commands,detect_js_build_type, JSBuildType
+        from Orchestration.Python.base_image_extractor import get_repo_file_index
+        from Orchestration.Python.base_image.node_version import resolve_node_version, node_version_to_image,js_install_commands,detect_js_build_type, JSBuildType
 
         repo_files = get_repo_file_index(repo_url)
         js_version = resolve_node_version(repo_files)
