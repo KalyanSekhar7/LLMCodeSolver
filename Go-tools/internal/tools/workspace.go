@@ -3,9 +3,11 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 type WorkspaceInfo struct {
@@ -157,6 +159,169 @@ func (t *ListDirTool) Execute(ctx context.Context, input []byte) ([]byte, error)
 	out := ListDirOutput{Entries: entries}
 	return json.Marshal(out)
 
+}
+
+// ---------------------------------------------------------------------------
+// glob — match files by glob patterns
+// ---------------------------------------------------------------------------
+
+type GlobInput struct {
+	Patterns      []string `json:"patterns"`
+	Path          string   `json:"path"`
+	IncludeHidden bool     `json:"include_hidden"`
+}
+
+type GlobMatch struct {
+	Path  string `json:"path"`
+	IsDir bool   `json:"is_dir"`
+	Size  int64  `json:"size"`
+}
+
+type GlobOutput struct {
+	Matches []GlobMatch `json:"matches"`
+	Count   int         `json:"count"`
+}
+
+type GlobTool struct{}
+
+func (t *GlobTool) Name() string { return "glob" }
+func (t *GlobTool) Description() string {
+	return "Finds files matching one or more glob patterns (supports ** for recursive matching)."
+}
+
+func (t *GlobTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
+	var in GlobInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return nil, err
+	}
+
+	if len(in.Patterns) == 0 {
+		return nil, errors.New("patterns required")
+	}
+
+	root := in.Path
+	if root == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+		root = cwd
+	}
+
+	seen := make(map[string]struct{})
+	var matches []GlobMatch
+
+	for _, pattern := range in.Patterns {
+		if ctx.Err() != nil {
+			break
+		}
+
+		isRecursive := strings.Contains(pattern, "**")
+
+		if isRecursive {
+			// Walk the tree and match the non-** suffix against each file
+			// e.g. "**/*.go" → match every file ending in .go
+			suffix := pattern
+			suffix = strings.TrimPrefix(suffix, "**/")
+
+			err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+				if err != nil {
+					return nil
+				}
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+
+				// Skip hidden dirs/files unless requested
+				if !in.IncludeHidden && strings.HasPrefix(d.Name(), ".") {
+					if d.IsDir() {
+						return filepath.SkipDir
+					}
+					return nil
+				}
+
+				// Skip common noise directories
+				if d.IsDir() {
+					switch d.Name() {
+					case "node_modules", "vendor", "__pycache__", ".git":
+						return filepath.SkipDir
+					}
+				}
+
+				relPath, _ := filepath.Rel(root, path)
+
+				// Match filename against the suffix pattern
+				matched, _ := filepath.Match(suffix, d.Name())
+				if !matched {
+					// Also try matching the full relative path
+					matched, _ = filepath.Match(suffix, relPath)
+				}
+
+				if matched {
+					if _, exists := seen[relPath]; !exists {
+						seen[relPath] = struct{}{}
+						info, _ := d.Info()
+						size := int64(0)
+						if info != nil {
+							size = info.Size()
+						}
+						matches = append(matches, GlobMatch{
+							Path:  relPath,
+							IsDir: d.IsDir(),
+							Size:  size,
+						})
+					}
+				}
+
+				return nil
+			})
+			if err != nil && err != context.Canceled {
+				continue
+			}
+		} else {
+			// Non-recursive: use filepath.Glob directly
+			absPattern := pattern
+			if !filepath.IsAbs(pattern) {
+				absPattern = filepath.Join(root, pattern)
+			}
+
+			globMatches, err := filepath.Glob(absPattern)
+			if err != nil {
+				continue
+			}
+
+			for _, m := range globMatches {
+				relPath, _ := filepath.Rel(root, m)
+
+				if !in.IncludeHidden {
+					if strings.HasPrefix(filepath.Base(relPath), ".") {
+						continue
+					}
+				}
+
+				if _, exists := seen[relPath]; exists {
+					continue
+				}
+				seen[relPath] = struct{}{}
+
+				info, err := os.Stat(m)
+				if err != nil {
+					continue
+				}
+
+				matches = append(matches, GlobMatch{
+					Path:  relPath,
+					IsDir: info.IsDir(),
+					Size:  info.Size(),
+				})
+			}
+		}
+	}
+
+	return json.Marshal(GlobOutput{
+		Matches: matches,
+		Count:   len(matches),
+	})
 }
 
 type ProjectDetectInput struct {
