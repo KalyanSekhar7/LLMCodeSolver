@@ -62,7 +62,7 @@ func resolveDir(dir string) (string, error) {
 // ---------------------------------------------------------------------------
 
 type GitStatusInput struct {
-	Dir string `json:"dir"`
+	Dir string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
 }
 
 type GitFileStatus struct {
@@ -89,6 +89,7 @@ func (t *GitStatusTool) Name() string        { return "git_status" }
 func (t *GitStatusTool) Description() string {
 	return "Returns porcelain status, branch, and upstream info for a git repo."
 }
+func (t *GitStatusTool) InputType() any { return GitStatusInput{} }
 
 func (t *GitStatusTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitStatusInput
@@ -190,10 +191,10 @@ func parseStatusLine(line string) GitFileStatus {
 // ---------------------------------------------------------------------------
 
 type GitDiffInput struct {
-	Dir      string `json:"dir"`
-	Staged   bool   `json:"staged"`
-	Pathspec string `json:"pathspec"`
-	Unified  int    `json:"unified"` // context lines (default 3)
+	Dir      string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Staged   bool   `json:"staged,omitzero" jsonschema:"Show staged (cached) changes instead of unstaged"`
+	Pathspec string `json:"pathspec,omitzero" jsonschema:"Limit diff to a specific file or path"`
+	Unified  int    `json:"unified,omitzero" jsonschema:"Number of context lines (default 3)"`
 }
 
 type GitDiffOutput struct {
@@ -208,6 +209,7 @@ func (t *GitDiffTool) Name() string        { return "git_diff" }
 func (t *GitDiffTool) Description() string {
 	return "Returns diff text for staged or unstaged changes."
 }
+func (t *GitDiffTool) InputType() any { return GitDiffInput{} }
 
 func (t *GitDiffTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitDiffInput
@@ -270,9 +272,9 @@ func (t *GitDiffTool) Execute(ctx context.Context, input []byte) ([]byte, error)
 // ---------------------------------------------------------------------------
 
 type GitDiffCachedInput struct {
-	Dir      string `json:"dir"`
-	Pathspec string `json:"pathspec"`
-	Unified  int    `json:"unified"`
+	Dir      string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Pathspec string `json:"pathspec,omitzero" jsonschema:"Limit diff to a specific file or path"`
+	Unified  int    `json:"unified,omitzero" jsonschema:"Number of context lines (default 3)"`
 }
 
 type GitDiffCachedTool struct{}
@@ -281,6 +283,7 @@ func (t *GitDiffCachedTool) Name() string        { return "git_diff_cached" }
 func (t *GitDiffCachedTool) Description() string {
 	return "Returns staged (cached) diff text."
 }
+func (t *GitDiffCachedTool) InputType() any { return GitDiffCachedInput{} }
 
 func (t *GitDiffCachedTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitDiffCachedInput
@@ -304,13 +307,13 @@ func (t *GitDiffCachedTool) Execute(ctx context.Context, input []byte) ([]byte, 
 // ---------------------------------------------------------------------------
 
 type GitLogInput struct {
-	Dir    string `json:"dir"`
-	N      int    `json:"n"` // number of commits
-	Path   string `json:"path"`
-	Since  string `json:"since"` // e.g. "2024-01-01"
-	Until  string `json:"until"`
-	Author string `json:"author"`
-	Grep   string `json:"grep"` // filter by message
+	Dir    string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	N      int    `json:"n,omitzero" jsonschema:"Number of commits to return (default 20)"`
+	Path   string `json:"path,omitzero" jsonschema:"Limit log to a specific file path"`
+	Since  string `json:"since,omitzero" jsonschema:"Show commits after this date (e.g. 2024-01-01)"`
+	Until  string `json:"until,omitzero" jsonschema:"Show commits before this date"`
+	Author string `json:"author,omitzero" jsonschema:"Filter commits by author name or email"`
+	Grep   string `json:"grep,omitzero" jsonschema:"Filter commits by message substring"`
 }
 
 type GitCommit struct {
@@ -332,6 +335,7 @@ func (t *GitLogTool) Name() string        { return "git_log" }
 func (t *GitLogTool) Description() string {
 	return "Returns commit log with optional filters (count, path, date range, author, message grep)."
 }
+func (t *GitLogTool) InputType() any { return GitLogInput{} }
 
 func (t *GitLogTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitLogInput
@@ -411,9 +415,9 @@ func (t *GitLogTool) Execute(ctx context.Context, input []byte) ([]byte, error) 
 // ---------------------------------------------------------------------------
 
 type GitShowInput struct {
-	Dir  string `json:"dir"`
-	Ref  string `json:"ref"` // commit SHA, tag, etc.
-	Path string `json:"path"`
+	Dir  string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Ref  string `json:"ref,omitzero" jsonschema:"Commit SHA, tag, or branch to show (default HEAD)"`
+	Path string `json:"path,omitzero" jsonschema:"Show file content at the given ref instead of commit details"`
 }
 
 type GitShowOutput struct {
@@ -427,6 +431,7 @@ func (t *GitShowTool) Name() string        { return "git_show" }
 func (t *GitShowTool) Description() string {
 	return "Shows commit details or file content at a given ref."
 }
+func (t *GitShowTool) InputType() any { return GitShowInput{} }
 
 func (t *GitShowTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitShowInput
@@ -471,10 +476,10 @@ func (t *GitShowTool) Execute(ctx context.Context, input []byte) ([]byte, error)
 // ---------------------------------------------------------------------------
 
 type GitBlameInput struct {
-	Dir       string `json:"dir"`
-	Path      string `json:"path"`
-	StartLine int    `json:"start_line"`
-	EndLine   int    `json:"end_line"`
+	Dir       string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Path      string `json:"path" jsonschema:"File path to blame"`
+	StartLine int    `json:"start_line,omitzero" jsonschema:"Start line for blame range"`
+	EndLine   int    `json:"end_line,omitzero" jsonschema:"End line for blame range"`
 }
 
 type BlameLine struct {
@@ -495,6 +500,7 @@ func (t *GitBlameTool) Name() string        { return "git_blame" }
 func (t *GitBlameTool) Description() string {
 	return "Shows line-by-line authorship for a file or line range."
 }
+func (t *GitBlameTool) InputType() any { return GitBlameInput{} }
 
 func (t *GitBlameTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitBlameInput
@@ -577,9 +583,9 @@ func isHex(s string) bool {
 // ---------------------------------------------------------------------------
 
 type GitCreateBranchInput struct {
-	Dir     string `json:"dir"`
-	Name    string `json:"name"`
-	FromRef string `json:"from_ref"`
+	Dir     string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Name    string `json:"name" jsonschema:"Name for the new branch"`
+	FromRef string `json:"from_ref,omitzero" jsonschema:"Ref to branch from (defaults to HEAD)"`
 }
 
 type GitCreateBranchOutput struct {
@@ -594,6 +600,7 @@ func (t *GitCreateBranchTool) Name() string        { return "git_create_branch" 
 func (t *GitCreateBranchTool) Description() string {
 	return "Creates a new git branch from the current HEAD or a specified ref."
 }
+func (t *GitCreateBranchTool) InputType() any { return GitCreateBranchInput{} }
 
 func (t *GitCreateBranchTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitCreateBranchInput
@@ -637,9 +644,9 @@ func (t *GitCreateBranchTool) Execute(ctx context.Context, input []byte) ([]byte
 // ---------------------------------------------------------------------------
 
 type GitSwitchBranchInput struct {
-	Dir    string `json:"dir"`
-	Branch string `json:"branch"`
-	Create bool   `json:"create"` // create + switch if true
+	Dir    string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Branch string `json:"branch" jsonschema:"Branch name to switch to"`
+	Create bool   `json:"create,omitzero" jsonschema:"Create the branch if it does not exist"`
 }
 
 type GitSwitchBranchOutput struct {
@@ -660,6 +667,8 @@ func (t *GitSwitchBranchTool) Description() string {
 func (t *GitCheckoutTool) Description() string {
 	return "Checks out a branch. Alias for git_switch_branch."
 }
+func (t *GitSwitchBranchTool) InputType() any { return GitSwitchBranchInput{} }
+func (t *GitCheckoutTool) InputType() any     { return GitSwitchBranchInput{} }
 
 func gitSwitchExecute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitSwitchBranchInput
@@ -713,9 +722,9 @@ func (t *GitCheckoutTool) Execute(ctx context.Context, input []byte) ([]byte, er
 // ---------------------------------------------------------------------------
 
 type GitAddInput struct {
-	Dir   string   `json:"dir"`
-	Paths []string `json:"paths"`
-	All   bool     `json:"all"`
+	Dir   string   `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Paths []string `json:"paths,omitzero" jsonschema:"File paths to stage"`
+	All   bool     `json:"all,omitzero" jsonschema:"Stage all changes (git add -A)"`
 }
 
 type GitAddOutput struct {
@@ -729,6 +738,7 @@ func (t *GitAddTool) Name() string        { return "git_add" }
 func (t *GitAddTool) Description() string {
 	return "Stages files for commit."
 }
+func (t *GitAddTool) InputType() any { return GitAddInput{} }
 
 func (t *GitAddTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitAddInput
@@ -770,9 +780,9 @@ func (t *GitAddTool) Execute(ctx context.Context, input []byte) ([]byte, error) 
 // ---------------------------------------------------------------------------
 
 type GitCommitInput struct {
-	Dir     string `json:"dir"`
-	Message string `json:"message"`
-	AllowEmpty bool `json:"allow_empty"`
+	Dir        string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Message    string `json:"message" jsonschema:"Commit message"`
+	AllowEmpty bool   `json:"allow_empty,omitzero" jsonschema:"Allow creating a commit with no changes"`
 }
 
 type GitCommitOutput struct {
@@ -787,6 +797,7 @@ func (t *GitCommitTool) Name() string        { return "git_commit" }
 func (t *GitCommitTool) Description() string {
 	return "Creates a commit with the given message. Operates on staged changes."
 }
+func (t *GitCommitTool) InputType() any { return GitCommitInput{} }
 
 func (t *GitCommitTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitCommitInput
@@ -840,10 +851,10 @@ func (t *GitCommitTool) Execute(ctx context.Context, input []byte) ([]byte, erro
 // ---------------------------------------------------------------------------
 
 type GitResetInput struct {
-	Dir          string `json:"dir"`
-	Mode         string `json:"mode"` // "soft", "mixed", "hard"
-	Ref          string `json:"ref"`
-	ConfirmHard  bool   `json:"confirm_hard"` // must be true for --hard
+	Dir         string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Mode        string `json:"mode,omitzero" jsonschema:"Reset mode: soft/mixed/hard (default mixed)"`
+	Ref         string `json:"ref,omitzero" jsonschema:"Ref to reset to (default HEAD)"`
+	ConfirmHard bool   `json:"confirm_hard,omitzero" jsonschema:"Must be true for hard reset (destructive)"`
 }
 
 type GitResetOutput struct {
@@ -857,6 +868,7 @@ func (t *GitResetTool) Name() string        { return "git_reset" }
 func (t *GitResetTool) Description() string {
 	return "Resets the current branch. Hard resets require explicit confirm_hard=true."
 }
+func (t *GitResetTool) InputType() any { return GitResetInput{} }
 
 func (t *GitResetTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitResetInput
@@ -909,10 +921,10 @@ func (t *GitResetTool) Execute(ctx context.Context, input []byte) ([]byte, error
 // ---------------------------------------------------------------------------
 
 type GitRestoreInput struct {
-	Dir    string   `json:"dir"`
-	Paths  []string `json:"paths"`
-	Staged bool     `json:"staged"` // restore from index (unstage)
-	Source string   `json:"source"` // ref to restore from
+	Dir    string   `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Paths  []string `json:"paths" jsonschema:"File paths to restore"`
+	Staged bool     `json:"staged,omitzero" jsonschema:"Restore from index (unstage files)"`
+	Source string   `json:"source,omitzero" jsonschema:"Ref to restore from (e.g. HEAD~1)"`
 }
 
 type GitRestoreOutput struct {
@@ -926,6 +938,7 @@ func (t *GitRestoreTool) Name() string        { return "git_restore" }
 func (t *GitRestoreTool) Description() string {
 	return "Restores (discards) changes for specified files."
 }
+func (t *GitRestoreTool) InputType() any { return GitRestoreInput{} }
 
 func (t *GitRestoreTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitRestoreInput
@@ -972,9 +985,9 @@ func (t *GitRestoreTool) Execute(ctx context.Context, input []byte) ([]byte, err
 // ---------------------------------------------------------------------------
 
 type GitApplyInput struct {
-	Dir   string `json:"dir"`
-	Patch string `json:"patch"`
-	Check bool   `json:"check"` // dry-run
+	Dir   string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Patch string `json:"patch" jsonschema:"Patch content to apply"`
+	Check bool   `json:"check,omitzero" jsonschema:"Dry-run only (check if patch applies cleanly)"`
 }
 
 type GitApplyOutput struct {
@@ -989,6 +1002,7 @@ func (t *GitApplyTool) Name() string        { return "git_apply" }
 func (t *GitApplyTool) Description() string {
 	return "Applies a patch via git apply."
 }
+func (t *GitApplyTool) InputType() any { return GitApplyInput{} }
 
 func (t *GitApplyTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitApplyInput
@@ -1041,9 +1055,9 @@ func (t *GitApplyTool) Execute(ctx context.Context, input []byte) ([]byte, error
 // ---------------------------------------------------------------------------
 
 type GitStashPushInput struct {
-	Dir     string   `json:"dir"`
-	Message string   `json:"message"`
-	Paths   []string `json:"paths"` // specific files to stash
+	Dir     string   `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Message string   `json:"message,omitzero" jsonschema:"Optional stash message"`
+	Paths   []string `json:"paths,omitzero" jsonschema:"Specific file paths to stash"`
 }
 
 type GitStashOutput struct {
@@ -1057,6 +1071,7 @@ func (t *GitStashPushTool) Name() string        { return "git_stash_push" }
 func (t *GitStashPushTool) Description() string {
 	return "Stashes current working changes."
 }
+func (t *GitStashPushTool) InputType() any { return GitStashPushInput{} }
 
 func (t *GitStashPushTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitStashPushInput
@@ -1106,8 +1121,8 @@ func (t *GitStashPushTool) Execute(ctx context.Context, input []byte) ([]byte, e
 // ---------------------------------------------------------------------------
 
 type GitStashPopInput struct {
-	Dir   string `json:"dir"`
-	Index int    `json:"index"` // stash@{index}, default 0
+	Dir   string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
+	Index int    `json:"index,omitzero" jsonschema:"Stash index to pop (default 0)"`
 }
 
 type GitStashPopTool struct{}
@@ -1116,6 +1131,7 @@ func (t *GitStashPopTool) Name() string        { return "git_stash_pop" }
 func (t *GitStashPopTool) Description() string {
 	return "Pops the most recent stash (or stash at given index)."
 }
+func (t *GitStashPopTool) InputType() any { return GitStashPopInput{} }
 
 func (t *GitStashPopTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitStashPopInput
@@ -1155,7 +1171,7 @@ func (t *GitStashPopTool) Execute(ctx context.Context, input []byte) ([]byte, er
 // ---------------------------------------------------------------------------
 
 type GitRemoteInfoInput struct {
-	Dir string `json:"dir"`
+	Dir string `json:"dir,omitzero" jsonschema:"Git repository directory (defaults to cwd)"`
 }
 
 type GitRemote struct {
@@ -1174,6 +1190,7 @@ func (t *GitRemoteInfoTool) Name() string        { return "git_remote_info" }
 func (t *GitRemoteInfoTool) Description() string {
 	return "Lists git remotes with fetch/push URLs (credentials are redacted)."
 }
+func (t *GitRemoteInfoTool) InputType() any { return GitRemoteInfoInput{} }
 
 func (t *GitRemoteInfoTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GitRemoteInfoInput

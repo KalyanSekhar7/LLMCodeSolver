@@ -15,7 +15,7 @@ type WorkspaceInfo struct {
 }
 
 type WorkspaceInfoInput struct {
-	Path string `json:"path"`
+	Path string `json:"path,omitzero" jsonschema:"Workspace root path (defaults to current working directory)"`
 }
 type WorkspaceInfoOutput struct {
 	RootPath          string            `json:"root_path"`
@@ -35,6 +35,7 @@ func (t *WorkspaceInfoTool) Name() string {
 func (t *WorkspaceInfoTool) Description() string {
 	return "Provides information about the current workspace, including the root path and available tools."
 }
+func (t *WorkspaceInfoTool) InputType() any { return WorkspaceInfoInput{} }
 
 func (t *WorkspaceInfoTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in WorkspaceInfoInput
@@ -78,9 +79,9 @@ func (t *WorkspaceInfoTool) Execute(ctx context.Context, input []byte) ([]byte, 
 }
 
 type ListDirInput struct {
-	Path      string `json:"path"`
-	Recursive bool   `json:"recursive"`
-	MaxDepth  int    `json:"max_depth"`
+	Path      string `json:"path,omitzero" jsonschema:"Directory path to list (defaults to current working directory)"`
+	Recursive bool   `json:"recursive,omitzero" jsonschema:"Whether to list recursively into subdirectories"`
+	MaxDepth  int    `json:"max_depth,omitzero" jsonschema:"Maximum recursion depth (default 3)"`
 }
 
 type FileEntry struct {
@@ -101,6 +102,7 @@ func (t *ListDirTool) Name() string {
 func (t *ListDirTool) Description() string {
 	return "Lists files and directories in a specified path, with options for recursion and depth."
 }
+func (t *ListDirTool) InputType() any { return ListDirInput{} }
 
 func (t *ListDirTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in ListDirInput
@@ -166,9 +168,9 @@ func (t *ListDirTool) Execute(ctx context.Context, input []byte) ([]byte, error)
 // ---------------------------------------------------------------------------
 
 type GlobInput struct {
-	Patterns      []string `json:"patterns"`
-	Path          string   `json:"path"`
-	IncludeHidden bool     `json:"include_hidden"`
+	Patterns      []string `json:"patterns" jsonschema:"Glob patterns to match (supports ** for recursive)"`
+	Path          string   `json:"path,omitzero" jsonschema:"Root directory for glob matching (defaults to cwd)"`
+	IncludeHidden bool     `json:"include_hidden,omitzero" jsonschema:"Include hidden files and directories"`
 }
 
 type GlobMatch struct {
@@ -188,6 +190,7 @@ func (t *GlobTool) Name() string { return "glob" }
 func (t *GlobTool) Description() string {
 	return "Finds files matching one or more glob patterns (supports ** for recursive matching)."
 }
+func (t *GlobTool) InputType() any { return GlobInput{} }
 
 func (t *GlobTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GlobInput
@@ -325,7 +328,7 @@ func (t *GlobTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 }
 
 type ProjectDetectInput struct {
-	Path string `json:"path"`
+	Path string `json:"path,omitzero" jsonschema:"Project root path to analyze (defaults to cwd)"`
 }
 
 type RecommendedCommands struct {
@@ -342,9 +345,12 @@ type ProjectDetectOutput struct {
 
 type ProjectDetectTool struct{}
 
+func (t *ProjectDetectTool) Name() string { return "project_detect" }
+
 func (t *ProjectDetectTool) Description() string {
 	return "Detects project type and recommends build, test, and lint commands."
 }
+func (t *ProjectDetectTool) InputType() any { return ProjectDetectInput{} }
 
 func (t *ProjectDetectTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in ProjectDetectInput

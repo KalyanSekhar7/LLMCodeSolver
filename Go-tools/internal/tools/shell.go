@@ -62,11 +62,11 @@ const (
 // ---------------------------------------------------------------------------
 
 type RunCommandInput struct {
-	Cmd          string            `json:"cmd"`
-	Args         []string          `json:"args"`
-	Cwd          string            `json:"cwd"`
-	EnvOverrides map[string]string `json:"env_overrides"`
-	TimeoutMs    int               `json:"timeout_ms"`
+	Cmd          string            `json:"cmd" jsonschema:"Command to execute"`
+	Args         []string          `json:"args,omitzero" jsonschema:"Command arguments"`
+	Cwd          string            `json:"cwd,omitzero" jsonschema:"Working directory for the command"`
+	EnvOverrides map[string]string `json:"env_overrides,omitzero" jsonschema:"Environment variable overrides"`
+	TimeoutMs    int               `json:"timeout_ms,omitzero" jsonschema:"Timeout in milliseconds (default 30000)"`
 }
 
 type RunCommandOutput struct {
@@ -84,6 +84,7 @@ func (t *RunCommandTool) Name() string { return "run_command" }
 func (t *RunCommandTool) Description() string {
 	return "Executes a command with arguments. Supports timeouts, env overrides, and output caps."
 }
+func (t *RunCommandTool) InputType() any { return RunCommandInput{} }
 
 func (t *RunCommandTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in RunCommandInput
@@ -189,11 +190,11 @@ func capOutput(data []byte) (string, bool) {
 // ---------------------------------------------------------------------------
 
 type RunScriptInput struct {
-	Script    string            `json:"script"`
-	Shell     string            `json:"shell"` // "bash", "sh", "zsh", "pwsh", "powershell"
-	Cwd       string            `json:"cwd"`
-	EnvOverrides map[string]string `json:"env_overrides"`
-	TimeoutMs int               `json:"timeout_ms"`
+	Script       string            `json:"script" jsonschema:"Shell script content to execute"`
+	Shell        string            `json:"shell,omitzero" jsonschema:"Shell to use: bash/sh/zsh/pwsh/powershell/fish (auto-detected if omitted)"`
+	Cwd          string            `json:"cwd,omitzero" jsonschema:"Working directory for the script"`
+	EnvOverrides map[string]string `json:"env_overrides,omitzero" jsonschema:"Environment variable overrides"`
+	TimeoutMs    int               `json:"timeout_ms,omitzero" jsonschema:"Timeout in milliseconds (default 30000)"`
 }
 
 type RunScriptOutput struct {
@@ -212,6 +213,7 @@ func (t *RunScriptTool) Name() string { return "run_script" }
 func (t *RunScriptTool) Description() string {
 	return "Executes a multi-line shell script. Supports shell selection, timeouts, and env overrides."
 }
+func (t *RunScriptTool) InputType() any { return RunScriptInput{} }
 
 func (t *RunScriptTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in RunScriptInput
@@ -357,7 +359,7 @@ func resolveShell(requested string) (string, string) {
 // ---------------------------------------------------------------------------
 
 type WhichInput struct {
-	Name string `json:"name"`
+	Name string `json:"name" jsonschema:"Binary name to look up in PATH"`
 }
 
 type WhichOutput struct {
@@ -372,6 +374,7 @@ func (t *WhichTool) Name() string { return "which" }
 func (t *WhichTool) Description() string {
 	return "Checks if a binary is installed and returns its path."
 }
+func (t *WhichTool) InputType() any { return WhichInput{} }
 
 func (t *WhichTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in WhichInput
@@ -430,8 +433,8 @@ func detectVersion(ctx context.Context, path, name string) string {
 // ---------------------------------------------------------------------------
 
 type SetEnvInput struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key   string `json:"key" jsonschema:"Environment variable name"`
+	Value string `json:"value" jsonschema:"Value to set"`
 }
 
 type SetEnvOutput struct {
@@ -445,6 +448,7 @@ func (t *SetEnvTool) Name() string { return "set_env" }
 func (t *SetEnvTool) Description() string {
 	return "Sets an environment variable for the current process."
 }
+func (t *SetEnvTool) InputType() any { return SetEnvInput{} }
 
 func (t *SetEnvTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in SetEnvInput
@@ -480,8 +484,8 @@ func (t *SetEnvTool) Execute(ctx context.Context, input []byte) ([]byte, error) 
 // ---------------------------------------------------------------------------
 
 type GetEnvInput struct {
-	Keys           []string `json:"keys"`            // specific keys to read; empty = return all safe vars
-	IncludeSensitive bool   `json:"include_sensitive"` // if true, return sensitive values unredacted
+	Keys             []string `json:"keys,omitzero" jsonschema:"Specific env var names to read (empty returns all)"`
+	IncludeSensitive bool     `json:"include_sensitive,omitzero" jsonschema:"If true return sensitive values unredacted"`
 }
 
 type EnvEntry struct {
@@ -501,7 +505,8 @@ func (t *GetEnvTool) Name() string { return "get_env" }
 func (t *GetEnvTool) Description() string {
 	return "Reads environment variables. Sensitive values are redacted by default."
 }
-
+func (t *GetEnvTool) InputType() any { return GetEnvInput{} }
+ 
 func (t *GetEnvTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in GetEnvInput
 	if err := json.Unmarshal(input, &in); err != nil {

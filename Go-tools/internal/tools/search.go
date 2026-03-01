@@ -21,11 +21,11 @@ import (
 // ---------------------------------------------------------------------------
 
 type SearchTextInput struct {
-	Query         string `json:"query"`
-	PathsGlob     string `json:"paths_glob"`
-	CaseSensitive bool   `json:"case_sensitive"`
-	MaxResults    int    `json:"max_results"`
-	RootPath      string `json:"root_path"`
+	Query         string `json:"query" jsonschema:"Search query (regex or plain text)"`
+	PathsGlob     string `json:"paths_glob,omitzero" jsonschema:"Glob pattern to filter files (e.g. **/*.go)"`
+	CaseSensitive bool   `json:"case_sensitive,omitzero" jsonschema:"Whether the search is case-sensitive"`
+	MaxResults    int    `json:"max_results,omitzero" jsonschema:"Maximum number of results to return (default 200)"`
+	RootPath      string `json:"root_path,omitzero" jsonschema:"Root directory to search in (defaults to cwd)"`
 }
 
 type SearchMatch struct {
@@ -46,6 +46,7 @@ func (t *SearchTextTool) Name() string        { return "search_text" }
 func (t *SearchTextTool) Description() string {
 	return "Searches for text (regex or plain) across files with optional glob filter."
 }
+func (t *SearchTextTool) InputType() any { return SearchTextInput{} }
 
 func (t *SearchTextTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in SearchTextInput
@@ -213,10 +214,10 @@ func collectFiles(root, globPattern string) ([]string, error) {
 // ---------------------------------------------------------------------------
 
 type SearchSymbolInput struct {
-	Symbol   string `json:"symbol"`
-	Language string `json:"language"`
-	Scope    string `json:"scope"` // "definition", "references", "all"
-	RootPath string `json:"root_path"`
+	Symbol   string `json:"symbol" jsonschema:"Symbol name to search for"`
+	Language string `json:"language,omitzero" jsonschema:"Programming language (go/python/javascript/typescript/rust). Auto-detected if omitted"`
+	Scope    string `json:"scope,omitzero" jsonschema:"Search scope: definition or references or all (default all)"`
+	RootPath string `json:"root_path,omitzero" jsonschema:"Root directory to search in (defaults to cwd)"`
 }
 
 type SymbolMatch struct {
@@ -238,6 +239,7 @@ func (t *SearchSymbolTool) Name() string        { return "search_symbol" }
 func (t *SearchSymbolTool) Description() string {
 	return "Searches for symbol definitions and references across the codebase."
 }
+func (t *SearchSymbolTool) InputType() any { return SearchSymbolInput{} }
 
 func (t *SearchSymbolTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in SearchSymbolInput
@@ -440,12 +442,12 @@ func detectDominantLanguage(root string) string {
 // ---------------------------------------------------------------------------
 
 type RipgrepInput struct {
-	Query         string `json:"query"`
-	Path          string `json:"path"`
-	CaseSensitive bool   `json:"case_sensitive"`
-	FileGlob      string `json:"file_glob"`
-	MaxResults    int    `json:"max_results"`
-	ContextLines  int    `json:"context_lines"`
+	Query         string `json:"query" jsonschema:"Search query (regex pattern)"`
+	Path          string `json:"path,omitzero" jsonschema:"Directory or file to search in (defaults to cwd)"`
+	CaseSensitive bool   `json:"case_sensitive,omitzero" jsonschema:"Whether the search is case-sensitive"`
+	FileGlob      string `json:"file_glob,omitzero" jsonschema:"Glob pattern to filter files (e.g. *.go)"`
+	MaxResults    int    `json:"max_results,omitzero" jsonschema:"Maximum number of matches (default 200)"`
+	ContextLines  int    `json:"context_lines,omitzero" jsonschema:"Number of context lines around each match"`
 }
 
 type RipgrepOutput struct {
@@ -461,6 +463,7 @@ func (t *RipgrepTool) Name() string        { return "ripgrep" }
 func (t *RipgrepTool) Description() string {
 	return "Fast text search using ripgrep (rg) if available, with Go fallback."
 }
+func (t *RipgrepTool) InputType() any { return RipgrepInput{} }
 
 func (t *RipgrepTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in RipgrepInput
@@ -611,9 +614,9 @@ func fallbackSearch(ctx context.Context, in RipgrepInput, searchPath string) ([]
 // ---------------------------------------------------------------------------
 
 type CtagsGenerateInput struct {
-	RootPath   string   `json:"root_path"`
-	Languages  []string `json:"languages"`
-	OutputFile string   `json:"output_file"`
+	RootPath   string   `json:"root_path,omitzero" jsonschema:"Project root to index (defaults to cwd)"`
+	Languages  []string `json:"languages,omitzero" jsonschema:"Languages to index (e.g. Go and Python). All if omitted"`
+	OutputFile string   `json:"output_file,omitzero" jsonschema:"Output tags file path (defaults to .tags in root)"`
 }
 
 type CtagsGenerateOutput struct {
@@ -629,6 +632,7 @@ func (t *CtagsGenerateTool) Name() string        { return "ctags_generate" }
 func (t *CtagsGenerateTool) Description() string {
 	return "Generates ctags index for faster symbol lookup."
 }
+func (t *CtagsGenerateTool) InputType() any { return CtagsGenerateInput{} }
 
 func (t *CtagsGenerateTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in CtagsGenerateInput
@@ -702,9 +706,9 @@ func (t *CtagsGenerateTool) Execute(ctx context.Context, input []byte) ([]byte, 
 // ---------------------------------------------------------------------------
 
 type CtagsQueryInput struct {
-	Symbol   string `json:"symbol"`
-	TagFile  string `json:"tag_file"`
-	RootPath string `json:"root_path"`
+	Symbol   string `json:"symbol" jsonschema:"Symbol name to look up in the tags index"`
+	TagFile  string `json:"tag_file,omitzero" jsonschema:"Path to tags file (defaults to .tags in root)"`
+	RootPath string `json:"root_path,omitzero" jsonschema:"Project root directory (defaults to cwd)"`
 }
 
 type CtagEntry struct {
@@ -726,6 +730,7 @@ func (t *CtagsQueryTool) Name() string        { return "ctags_query" }
 func (t *CtagsQueryTool) Description() string {
 	return "Queries a ctags index for symbol definitions."
 }
+func (t *CtagsQueryTool) InputType() any { return CtagsQueryInput{} }
 
 func (t *CtagsQueryTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in CtagsQueryInput
@@ -803,7 +808,7 @@ func (t *CtagsQueryTool) Execute(ctx context.Context, input []byte) ([]byte, err
 // ---------------------------------------------------------------------------
 
 type AstParseInput struct {
-	Path string `json:"path"`
+	Path string `json:"path" jsonschema:"File path to parse for structural outline"`
 }
 
 type AstSymbol struct {
@@ -829,6 +834,7 @@ func (t *AstParseTool) Name() string        { return "ast_parse" }
 func (t *AstParseTool) Description() string {
 	return "Parses a Go file and returns its structural outline (functions, types, imports)."
 }
+func (t *AstParseTool) InputType() any { return AstParseInput{} }
 
 func (t *AstParseTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in AstParseInput
@@ -1066,8 +1072,8 @@ func parseGenericFile(path string) ([]byte, error) {
 // ---------------------------------------------------------------------------
 
 type CodeOutlineInput struct {
-	Paths    []string `json:"paths"`
-	RootPath string   `json:"root_path"`
+	Paths    []string `json:"paths" jsonschema:"File paths or glob patterns to outline"`
+	RootPath string   `json:"root_path,omitzero" jsonschema:"Root directory for resolving relative paths (defaults to cwd)"`
 }
 
 type FileOutline struct {
@@ -1087,6 +1093,7 @@ func (t *CodeOutlineTool) Name() string        { return "code_outline" }
 func (t *CodeOutlineTool) Description() string {
 	return "Returns summarized structural outlines for multiple files."
 }
+func (t *CodeOutlineTool) InputType() any { return CodeOutlineInput{} }
 
 func (t *CodeOutlineTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in CodeOutlineInput

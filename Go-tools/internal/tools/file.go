@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -15,10 +16,10 @@ import (
 )
 
 type ReadFileInput struct {
-	Path      string `json:"path"`
-	StartLine int    `json:"start_line"`
-	EndLine   int    `json:"end_line"`
-	MaxBytes  int64  `json:"max_bytes"`
+	Path      string `json:"path" jsonschema:"Absolute or relative file path to read"`
+	StartLine int    `json:"start_line,omitzero" jsonschema:"1-based start line (0 means from beginning)"`
+	EndLine   int    `json:"end_line,omitzero" jsonschema:"1-based end line (0 means to end of file)"`
+	MaxBytes  int64  `json:"max_bytes,omitzero" jsonschema:"Maximum bytes to read (0 for no limit)"`
 }
 
 type ReadFileOutput struct {
@@ -37,6 +38,7 @@ func (t *ReadFileTool) Name() string {
 func (t *ReadFileTool) Description() string {
 	return "Reads file content with optional line range and byte limit."
 }
+func (t *ReadFileTool) InputType() any { return ReadFileInput{} }
 
 func (t *ReadFileTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in ReadFileInput
@@ -95,8 +97,8 @@ func (t *ReadFileTool) Execute(ctx context.Context, input []byte) ([]byte, error
 }
 
 type ReadManyFilesInput struct {
-	Paths    []string `json:"paths"`
-	MaxBytes int64    `json:"max_bytes"`
+	Paths    []string `json:"paths" jsonschema:"List of file paths to read"`
+	MaxBytes int64    `json:"max_bytes,omitzero" jsonschema:"Maximum bytes per file (0 for no limit)"`
 }
 
 type ReadManyFilesOutput struct {
@@ -112,6 +114,7 @@ func (t *ReadManyFilesTool) Name() string {
 func (t *ReadManyFilesTool) Description() string {
 	return "Reads multiple files at once."
 }
+func (t *ReadManyFilesTool) InputType() any { return ReadManyFilesInput{} }
 
 func (t *ReadManyFilesTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in ReadManyFilesInput
@@ -143,10 +146,10 @@ func (t *ReadManyFilesTool) Execute(ctx context.Context, input []byte) ([]byte, 
 }
 
 type WriteFileInput struct {
-	Path       string `json:"path"`
-	Content    string `json:"content"`
-	CreateDirs bool   `json:"create_dirs"`
-	Mode       uint32 `json:"mode"` // e.g. 0644
+	Path       string `json:"path" jsonschema:"File path to write to"`
+	Content    string `json:"content" jsonschema:"Content to write to the file"`
+	CreateDirs bool   `json:"create_dirs,omitzero" jsonschema:"Create parent directories if they do not exist"`
+	Mode       uint32 `json:"mode,omitzero" jsonschema:"File permission mode (e.g. 0644)"`
 }
 
 type WriteFileOutput struct {
@@ -163,6 +166,7 @@ func (t *WriteFileTool) Name() string {
 func (t *WriteFileTool) Description() string {
 	return "Writes content to a file."
 }
+func (t *WriteFileTool) InputType() any { return WriteFileInput{} }
 
 func (t *WriteFileTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in WriteFileInput
@@ -201,8 +205,8 @@ func (t *WriteFileTool) Execute(ctx context.Context, input []byte) ([]byte, erro
 }
 
 type AppendFileInput struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
+	Path    string `json:"path" jsonschema:"File path to append to"`
+	Content string `json:"content" jsonschema:"Content to append"`
 }
 
 type AppendFileOutput struct {
@@ -218,6 +222,7 @@ func (t *AppendFileTool) Name() string {
 func (t *AppendFileTool) Description() string {
 	return "Appends content to a file."
 }
+func (t *AppendFileTool) InputType() any { return AppendFileInput{} }
 
 func (t *AppendFileTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in AppendFileInput
@@ -243,8 +248,8 @@ func (t *AppendFileTool) Execute(ctx context.Context, input []byte) ([]byte, err
 }
 
 type DeleteFileInput struct {
-	Path         string `json:"path"`
-	ConfirmToken string `json:"confirm_token"`
+	Path         string `json:"path" jsonschema:"File path to delete"`
+	ConfirmToken string `json:"confirm_token" jsonschema:"Confirmation token to prevent accidental deletion"`
 }
 
 type DeleteFileOutput struct {
@@ -261,6 +266,7 @@ func (t *DeleteFileTool) Name() string {
 func (t *DeleteFileTool) Description() string {
 	return "Deletes a file. Requires confirm_token."
 }
+func (t *DeleteFileTool) InputType() any { return DeleteFileInput{} }
 
 func (t *DeleteFileTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in DeleteFileInput
@@ -296,9 +302,9 @@ func (t *DeleteFileTool) Execute(ctx context.Context, input []byte) ([]byte, err
 }
 
 type MoveCopyInput struct {
-	Src       string `json:"src"`
-	Dst       string `json:"dst"`
-	Overwrite bool   `json:"overwrite"`
+	Src       string `json:"src" jsonschema:"Source file path"`
+	Dst       string `json:"dst" jsonschema:"Destination file path"`
+	Overwrite bool   `json:"overwrite,omitzero" jsonschema:"Overwrite destination if it exists"`
 }
 
 type MoveCopyOutput struct {
@@ -316,6 +322,60 @@ func (t *MoveFileTool) Description() string {
 }
 func (t *CopyFileTool) Description() string {
 	return "Copies a file from src to dst."
+}
+func (t *MoveFileTool) InputType() any { return MoveCopyInput{} }
+func (t *CopyFileTool) InputType() any { return MoveCopyInput{} }
+
+func (t *MoveFileTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
+	var in MoveCopyInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return nil, err
+	}
+
+	if in.Src == "" || in.Dst == "" {
+		return nil, errors.New("src and dst required")
+	}
+
+	if !in.Overwrite {
+		if _, err := os.Stat(in.Dst); err == nil {
+			return nil, errors.New("destination exists")
+		}
+	}
+
+	// Create destination directory if needed
+	if dir := filepath.Dir(in.Dst); dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, err
+		}
+	}
+
+	// Try os.Rename first (fast, same-filesystem move)
+	if err := os.Rename(in.Src, in.Dst); err != nil {
+		// Fallback: copy + delete (cross-filesystem move)
+		srcFile, err := os.Open(in.Src)
+		if err != nil {
+			return nil, err
+		}
+		defer srcFile.Close()
+
+		dstFile, err := os.Create(in.Dst)
+		if err != nil {
+			return nil, err
+		}
+		defer dstFile.Close()
+
+		if _, err := io.Copy(dstFile, srcFile); err != nil {
+			return nil, err
+		}
+
+		// Close before removing
+		srcFile.Close()
+		if err := os.Remove(in.Src); err != nil {
+			return nil, fmt.Errorf("copied but failed to remove source: %w", err)
+		}
+	}
+
+	return json.Marshal(MoveCopyOutput{Success: true})
 }
 
 func (t *CopyFileTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
@@ -350,14 +410,14 @@ func (t *CopyFileTool) Execute(ctx context.Context, input []byte) ([]byte, error
 }
 
 type FileEdit struct {
-	StartLine   int    `json:"start_line"`
-	EndLine     int    `json:"end_line"`
-	Replacement string `json:"replacement"`
+	StartLine   int    `json:"start_line" jsonschema:"1-based start line of the range to replace"`
+	EndLine     int    `json:"end_line" jsonschema:"1-based end line of the range to replace (inclusive)"`
+	Replacement string `json:"replacement" jsonschema:"Replacement text for the specified line range"`
 }
 
 type EditFileRangesInput struct {
-	Path  string     `json:"path"`
-	Edits []FileEdit `json:"edits"`
+	Path  string     `json:"path" jsonschema:"File path to edit"`
+	Edits []FileEdit `json:"edits" jsonschema:"List of line-range edits to apply"`
 }
 
 type EditFileRangesOutput struct {
@@ -373,6 +433,7 @@ func (t *EditFileRangesTool) Name() string {
 func (t *EditFileRangesTool) Description() string {
 	return "Edits specific line ranges in a file."
 }
+func (t *EditFileRangesTool) InputType() any { return EditFileRangesInput{} }
 
 func (t *EditFileRangesTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in EditFileRangesInput
@@ -417,7 +478,7 @@ func (t *EditFileRangesTool) Execute(ctx context.Context, input []byte) ([]byte,
 }
 
 type ApplyDiffInput struct {
-	Diff string `json:"diff"`
+	Diff string `json:"diff" jsonschema:"Unified diff content to apply"`
 }
 
 type ApplyDiffOutput struct {
@@ -435,6 +496,7 @@ func (t *ApplyUnifiedDiffTool) Name() string {
 func (t *ApplyUnifiedDiffTool) Description() string {
 	return "Applies a unified diff patch."
 }
+func (t *ApplyUnifiedDiffTool) InputType() any { return ApplyDiffInput{} }
 
 func (t *ApplyUnifiedDiffTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in ApplyDiffInput
@@ -458,7 +520,7 @@ func (t *ApplyUnifiedDiffTool) Execute(ctx context.Context, input []byte) ([]byt
 }
 
 type FileStatInput struct {
-	Path string `json:"path"`
+	Path string `json:"path" jsonschema:"File path to get metadata for"`
 }
 
 type FileStatOutput struct {
@@ -474,6 +536,7 @@ func (t *FileStatTool) Name() string { return "file_stat" }
 func (t *FileStatTool) Description() string {
 	return "Returns metadata about a file."
 }
+func (t *FileStatTool) InputType() any { return FileStatInput{} }
 
 func (t *FileStatTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in FileStatInput
@@ -504,8 +567,8 @@ func (t *FileStatTool) Execute(ctx context.Context, input []byte) ([]byte, error
 }
 
 type HashFileInput struct {
-	Path string `json:"path"`
-	Algo string `json:"algo"` // "sha256" or "md5"
+	Path string `json:"path" jsonschema:"File path to hash"`
+	Algo string `json:"algo,omitzero" jsonschema:"Hash algorithm: sha256 (default) or md5"`
 }
 
 type HashFileOutput struct {
@@ -518,6 +581,7 @@ func (t *HashFileTool) Name() string { return "hash_file" }
 func (t *HashFileTool) Description() string {
 	return "Computes file hash."
 }
+func (t *HashFileTool) InputType() any { return HashFileInput{} }
 
 func (t *HashFileTool) Execute(ctx context.Context, input []byte) ([]byte, error) {
 	var in HashFileInput
