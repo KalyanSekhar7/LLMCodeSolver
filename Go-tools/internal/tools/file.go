@@ -420,6 +420,29 @@ type EditFileRangesInput struct {
 	Edits []FileEdit `json:"edits" jsonschema:"List of line-range edits to apply"`
 }
 
+// UnmarshalJSON handles the case where the LLM sends "edits" as a
+// JSON-encoded string instead of a proper array.
+func (e *EditFileRangesInput) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Path  string          `json:"path"`
+		Edits json.RawMessage `json:"edits"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	e.Path = raw.Path
+
+	if err := json.Unmarshal(raw.Edits, &e.Edits); err != nil {
+		// LLM sometimes stringifies nested JSON — try unwrapping
+		var s string
+		if err2 := json.Unmarshal(raw.Edits, &s); err2 == nil {
+			return json.Unmarshal([]byte(s), &e.Edits)
+		}
+		return err
+	}
+	return nil
+}
+
 type EditFileRangesOutput struct {
 	Success bool `json:"success"`
 }

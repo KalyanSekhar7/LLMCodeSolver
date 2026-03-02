@@ -1,0 +1,34 @@
+FROM python:3.10
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    bash \
+    curl \
+    ca-certificates \
+    ripgrep \
+    tree \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /workspace && \
+    cd /workspace && \
+    git init && \
+    git config user.email "agent@test.local" && \
+    git config user.name "Test Agent" && \
+    echo "# Test Workspace" > README.md && \
+    echo 'print("hello world")' > hello.py && \
+    mkdir -p src && \
+    echo 'def add(a, b):\n    return a + b\n\ndef subtract(a, b):\n    return a - b' > src/math_utils.py && \
+    echo 'from math_utils import add\nprint(add(2, 3))' > src/main.py && \
+    git add -A && \
+    git commit -m "initial commit"
+
+COPY build/llm-agent /usr/local/bin/llm-agent
+RUN chmod +x /usr/local/bin/llm-agent
+
+WORKDIR /workspace
+
+ENTRYPOINT ["llm-agent"]
