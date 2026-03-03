@@ -3,7 +3,7 @@
 A terminal-based interactive AI coding agent that runs entirely inside a Docker container.
 Point it at any GitHub repo, and it builds an isolated environment with the right language runtime,
 dependencies, and 43 developer tools — then drops you into an interactive session where an LLM
-can read, search, edit, and run code on your behalf.
+can read, search, edit,test and run code on your behalf.
 
 ---
 
@@ -11,7 +11,7 @@ can read, search, edit, and run code on your behalf.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           YOUR MACHINE (Host)                              │
+│                           MACHINE (Host)                                   │
 │                                                                            │
 │   1. Configure repo ──► 2. Generate Dockerfile ──► 3. Build image          │
 │      (YAML)                (Python scripts)           (docker build)       │
@@ -304,65 +304,6 @@ The agent has direct access to these tools inside the container:
 
 ---
 
-## Architecture Deep Dive
-
-### Why No MCP Inside the Container?
-
-MCP (Model Context Protocol) is designed for **inter-process communication** — letting a
-separate client (Cursor, Claude Desktop) call tools on a separate server over stdio or HTTP.
-
-Inside our binary, tools are Go functions. The agent calls them directly:
-
-```
-MCP approach (two processes, serialization overhead):
-  Agent process  ──JSON-RPC──►  MCP Server process  ──►  Tool function
-  Agent process  ◄──JSON-RPC──  MCP Server process  ◄──  Tool result
-
-Direct approach (single process, zero overhead):
-  Agent loop  ──►  tool.Execute(ctx, input)  ──►  result
-```
-
-The MCP server (`cmd/server/`) still exists for external clients like Cursor.
-The agent binary (`cmd/agent/`) shares the same `internal/tools/` package but
-calls tools directly.
-
-### Why a Static Go Binary?
-
-- **21 MB**, zero runtime dependencies
-- Works in any base image (Python, Go, Rust, Node)
-- No need to install Go in the container
-- Cross-compiles with one command: `CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build`
-
----
-
-## Development
-
-### Building
-
-```bash
-cd Go-tools
-
-# Build for local development
-go build ./cmd/agent/
-
-# Run tests
-go test ./...
-
-# Vet
-go vet ./...
-
-# Cross-compile for Docker
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../build/llm-agent ./cmd/agent/
-```
-
-### Adding a New Tool
-
-1. Add the struct and methods to the appropriate file in `Go-tools/internal/tools/`
-2. Implement the `Tool` interface: `Name()`, `Description()`, `InputType()`, `Execute()`
-3. Register it in `AllTools()` in `tools.go`
-4. The agent and MCP server both pick it up automatically
-
----
 
 ## License
 
