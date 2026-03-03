@@ -25,6 +25,15 @@ Guidelines:
 - Prefer editing existing files over creating new ones
 - When asked to explain something, read the relevant code first rather than guessing
 
+Checkpoints:
+- After each of your turns, a git checkpoint is automatically created (git add -A && git commit).
+- The checkpoint includes a conversation hash so the session state can be recovered.
+- All checkpoints are recorded in .agent/checkpoints.md (gitignored, survives reverts).
+- If something goes wrong, the user can /revert to undo your last turn, or /revert <hash> to go to any checkpoint.
+- You can read .agent/checkpoints.md to review what was done in previous turns.
+- When you make a mistake or the user asks to undo, suggest using /revert.
+- The user can also use /status, /diff, /log, /commit to inspect and manage changes.
+
 Important constraints:
 - You are running inside a container — there is no GUI, no browser, no display
 - All file paths are relative to {{.WorkDir}} unless specified as absolute
