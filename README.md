@@ -2,15 +2,15 @@
 
 A terminal-based interactive AI coding agent that runs entirely inside a Docker container.
 Point it at any GitHub repo, and it builds an isolated environment with the right language runtime,
-dependencies, and 43 developer tools — then drops you into an interactive session where an LLM
-can read, search, edit,test and run code on your behalf.
+dependencies, and 43 developer tools. It creates a sandboxed environment with interactive session where an LLM
+can read, search, edit,test and run code, and basically solve it.
 
 ---
 
 ## How It Works
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
+┌────────────────────────────────────────────────────────────────────────────┐
 │                           MACHINE (Host)                                   │
 │                                                                            │
 │   1. Configure repo ──► 2. Generate Dockerfile ──► 3. Build image          │
@@ -28,18 +28,18 @@ can read, search, edit,test and run code on your behalf.
 └───────────────────────────────────────────────────────────────┼────────────┘
                                                                 │
                     ┌───────────────────────────────────────────┼────────────┐
-                    │              DOCKER CONTAINER              ▼            │
+                    │              DOCKER CONTAINER             ▼            │
                     │                                                        │
                     │   /usr/local/bin/llm-agent  (21 MB static Go binary)   │
                     │   ┌──────────────────────────────────────────────┐     │
                     │   │  Terminal UI          >>>  user prompt       │     │
                     │   │  ┌────────────────────────────────────────┐  │     │
-                    │   │  │  Agent Loop                           │  │     │
-                    │   │  │  ┌──────────┐  ┌───────────────────┐  │  │     │
+                    │   │  │  Agent Loop                            │  │     │
+                    │   │  │  ┌───────────┐  ┌───────────────────┐  │  │     │
                     │   │  │  │ Anthropic │  │  43 Tools         │  │  │     │
                     │   │  │  │ Claude    │◄►│  file, git, shell │  │  │     │
                     │   │  │  │ API       │  │  search, workspace│  │  │     │
-                    │   │  │  └──────────┘  └───────────────────┘  │  │     │
+                    │   │  │  └───────────┘  └───────────────────┘  │  │     │
                     │   │  └────────────────────────────────────────┘  │     │
                     │   └──────────────────────────────────────────────┘     │
                     │                                                        │
@@ -54,7 +54,7 @@ can read, search, edit,test and run code on your behalf.
             │
             ▼
     ┌───────────────┐
-    │  Send to LLM  │◄─────────────────────────┐
+    │  Send to LLM  │◄──────────────────────────┐
     │  (streaming)  │                           │
     └───────┬───────┘                           │
             │                                   │
@@ -74,7 +74,7 @@ can read, search, edit,test and run code on your behalf.
 ### What You See
 
 ```
-┌────────────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────────────┐
 │ LLM Code Solver                                               │
 │                                                               │
 │ Working dir:  /workspace                                      │
@@ -85,7 +85,7 @@ can read, search, edit,test and run code on your behalf.
 │ Session: no tokens used yet                                   │
 │                                                               │
 │ Ctrl+C interrupt  Ctrl+D exit  /help this  /clear reset       │
-└────────────────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────────────┘
 
 >>> Fix the bug in src/math_utils.py
 
@@ -95,8 +95,8 @@ can read, search, edit,test and run code on your behalf.
   ■ Tool: read_file
     path: src/math_utils.py
     ┌──────────────────────────────────────────────────────────────────────────┐
-    │ def add(a, b):                                                         │
-    │     return a + b                                                       │
+    │ def add(a, b):                                                           │
+    │     return a + b                                                         │
     └──────────────────────────────────────────────────────────────────────────┘
 
   ■ Tool: edit_file_ranges
@@ -105,7 +105,7 @@ can read, search, edit,test and run code on your behalf.
   ■ Tool: run_command
     cmd: python src/main.py
     ┌──────────────────────────────────────────────────────────────────────────┐
-    │ 5                                                                      │
+    │ 5                                                                        │
     └──────────────────────────────────────────────────────────────────────────┘
 
   ✔ Done (3 tool calls, 8.2s, 1523→847 tokens)
