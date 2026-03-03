@@ -147,7 +147,7 @@ pip install -e .
 
 ### 3. Set up your API key
 
-Create `Python/.env` (already gitignored):
+Create `Python/.env`:
 
 ```bash
 echo 'ANTHROPIC_API_KEY=sk-ant-api03-your-key-here' > Python/.env
